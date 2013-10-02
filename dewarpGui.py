@@ -1,11 +1,12 @@
 import Tkinter
 from PIL import Image, ImageTk
 import math
+import sys
 
 class dewarpGui:
-  def __init__(self):
+  def __init__(self, filename):
 
-    self.imageFile = "image.jpg"
+    self.imageFile = filename
 
     # width, height
     self.canvasSize = (800, 600)
@@ -44,7 +45,7 @@ class dewarpGui:
     self.root.mainloop()
 
   def finish(self):
-    print self.statusBar["text"]
+    self.returnValue = self.statusBar["text"]
     self.root.destroy()
 
   def distanceFromXYC(self, centre, xy):
@@ -112,4 +113,9 @@ class dewarpGui:
     self.imageSize = self.imageOriginal.size
     self.imageMin = min(self.imageSize)
 
-ui = dewarpGui()
+if __name__ == "__main__":
+  if len(sys.argv) > 1:
+    dewarp = dewarpGui(sys.argv[1])
+    print dewarp.returnValue
+  else:
+	print "Usage: python {0} <image>".format(sys.argv[0])
