@@ -1,9 +1,11 @@
 import Tkinter
 from PIL import Image, ImageTk
+import numpy as np
 import math
 import sys
+import cv2
 
-class dewarpGui:
+class calibrationGui:
   def __init__(self, filename):
 
     self.imageFile = filename
@@ -11,7 +13,7 @@ class dewarpGui:
     # width, height
     self.canvasSize = (800, 600)
     self.root = Tkinter.Tk()
-    self.root.title("Dewarp calibration")
+    self.root.title("Dewarper calibration")
     self.root.protocol('WM_DELETE_WINDOW', self.finish)
 
     self.w = Tkinter.Canvas(self.root, width=self.canvasSize[0], height=self.canvasSize[1], closeenough=10)
@@ -45,6 +47,10 @@ class dewarpGui:
     self.root.mainloop()
 
   def finish(self):
+    # Cleanup image copies
+    self.image = None
+    self.tkimage = None
+
     self.returnValue = self.statusBar["text"]
     self.root.destroy()
 
@@ -113,9 +119,44 @@ class dewarpGui:
     self.imageSize = self.imageOriginal.size
     self.imageMin = min(self.imageSize)
 
+class Dewarper:
+  def __init__(self, Ws, Hs, Wd, Hd, R1, R2, Cx, Cy, angle):
+    self.buildMap(Ws, Hs, Wd, Hd, R1, R2, Cx, Cy, angle)
+    pass
+
+  # build the mapping
+  # optimised version of https://github.com/kscottz/dewarp/
+  def buildMap(self, Ws, Hs, Wd, Hd, R1, R2, Cx, Cy, angle):
+    self.map_x = np.zeros((Hd, Wd), np.float32)
+    self.map_y = np.zeros((Hd, Wd), np.float32)
+    rMap = np.linspace(R1, R1 + (R2 - R1), Hd)
+    thetaMap = np.linspace(angle, angle + float(Wd) * 2.0 * np.pi, Wd)
+    sinMap = np.sin(thetaMap)
+    cosMap = np.cos(thetaMap)
+    for y in xrange(0, Hd):
+      self.map_x[y] = Cx + rMap[y] * sinMap
+      self.map_y[y] = Cy + rMap[y] * cosMap
+
+  def unwarp(self, img):
+    output = cv2.remap(img, self.map_x, self.map_y, cv2.INTER_CUBIC)
+    return output
+
 if __name__ == "__main__":
+  destSize = [800, 200]
   if len(sys.argv) > 1:
-    dewarp = dewarpGui(sys.argv[1])
-    print dewarp.returnValue
+    calibration = calibrationGui(sys.argv[1])
+    print calibration.returnValue
+
+    pilImage = calibration.imageOriginal.convert('RGB')
+    open_cv_image = np.array(pilImage)
+    # Convert RGB to BGR
+    open_cv_image = cv2.cvtColor(np.asarray(open_cv_image), cv2.COLOR_RGB2BGR)
+
+    dewarper = Dewarper(calibration.imageSize[0], calibration.imageSize[1], destSize[0], destSize[1], calibration.dewarpRadii[1], calibration.dewarpRadii[0], calibration.dewarpCentre[0], calibration.dewarpCentre[1], 1)
+
+    cv2.namedWindow("window")
+    cv2.imshow("window", dewarper.unwarp(open_cv_image))
+    cv2.waitKey()
+
   else:
-	print "Usage: python {0} <image>".format(sys.argv[0])
+    print "Usage: python {0} <image>".format(sys.argv[0])
