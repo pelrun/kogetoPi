@@ -21,17 +21,23 @@ class calibrationGui:
 
     self.w = Tkinter.Canvas(self.root, width=self.canvasSize[0], height=self.canvasSize[1], closeenough=10)
     self.w.bind("<Configure>", func=self.resize)
-    self.w.pack(fill='both', expand='yes')
+    self.w.pack(fill='both', expand='yes', side="top")
 
     self.statusBar = Tkinter.Label(self.root, bd=1, relief='sunken', anchor='w')
     self.statusBar.pack(side='bottom', fill='x')
 
-    Tkinter.Button(self.root, text="Update", command=self.updatePreview).pack(side='right')
+    self.root2 = Tkinter.Toplevel()
+    self.root2.title("Dewarper preview")
+    self.root2.protocol('WM_DELETE_WINDOW', self.finish)
 
+    self.previewLabel = Tkinter.Label(self.root2)
+    self.previewLabel.pack(anchor='nw')
+
+    Tkinter.Button(self.root2, text="Update", command=self.updatePreview).pack(side="left", anchor="nw")
     self.livePreview = Tkinter.IntVar()
-    Tkinter.Checkbutton(self.root, text='Live Preview',
+    Tkinter.Checkbutton(self.root2, text='Live Preview',
                         variable=self.livePreview, command=self.update
-                        ).pack(side='right')
+                        ).pack(side="left", anchor="nw")
 
     self.r_max = self.w.create_oval(0, 0, 0, 0, width=1, outline='blue', activeoutline='green', fill='', tag='r_max')
     self.r_min = self.w.create_oval(0, 0, 0, 0, width=1, outline='blue', activeoutline='green', fill='', tag='r_min')
@@ -107,7 +113,7 @@ class calibrationGui:
     self.w.coords(self.r_max, self.bboxFromXYR(self.dewarpCentre, self.dewarpRadii[0]))
     self.w.coords(self.centre, self.bboxFromXYR(self.dewarpCentre, 10))
     self.w.coords(self.angle, self.bboxFromXYA(self.dewarpCentre, self.dewarpAngle))
-    self.statusBar["text"] = self.dictParams()
+    self.statusBar['text'] = self.dictParams()
     if self.livePreview.get():
       self.updatePreview()
 
@@ -127,19 +133,14 @@ class calibrationGui:
     self.update()
 
   def updatePreview(self):
-    preview(self.dictParams())
+    dewarper = pano.Dewarper(destSize[0], destSize[1],
+                             self.imageOriginal.size[0], self.imageOriginal.size[1],
+                             self.dewarpRadii[1], self.dewarpRadii[0],
+                             self.dewarpCentre[0], self.dewarpCentre[1],
+                             self.dewarpAngle)
 
-#---------------
-
-def preview(params):
-  dewarper = pano.Dewarper(destSize[0], destSize[1],
-                           params['imageSize'][0], params['imageSize'][1],
-                           params['radii'][1], params['radii'][0],
-                           params['centre'][0], params['centre'][1],
-                           params['angle'])
-
-  cv2.namedWindow("window")
-  cv2.imshow("window", dewarper.unwarp(cvImage))
+    self.previewTkImage = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(dewarper.unwarp(cvImage), cv2.COLOR_BGR2RGB)))
+    self.previewLabel['image'] = self.previewTkImage
 
 if __name__ == "__main__":
   destSize = [800, 200]
