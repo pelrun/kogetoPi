@@ -5,6 +5,13 @@ class Dewarper:
   def __init__(self, Wd, Hd, Ws, Hs, R1, R2, Cx, Cy, angle, interpolation=cv2.INTER_CUBIC):
     self.interpolation = interpolation
 
+    if Wd is None:
+      Wd = round(float(max(R1, R2)) * 2.0 * np.pi)
+    if Hd is None:
+      # TODO: determine vertical FOV of lens and use that (horizontal fov is 360 deg, obviously)
+	  # 90 is close, but unverified.
+      Hd = Wd * (90/360)
+
     self.buildMap(Wd, Hd, Ws, Hs, R1, R2, Cx, Cy, angle)
     pass
 
